@@ -160,26 +160,3 @@ class _Canonicallizer(object):
         """ Sort a list of one type of list item """
         # Sort by the first element of the tuple
         return sorted(l, key=lambda x: x[0])
-
-d = {
-    "a": [
-        10,
-        {},
-        {
-            "hello": 1,
-            "zzz": []
-        },
-        "bob",
-        "agnes"
-    ],
-    "1": 55.7,
-    "3": {
-        "xxxxx": {},
-        "ggg": []
-    },
-    "b": None,
-    "c": True,
-    "d": False
-}
-
-print dumps(d)
