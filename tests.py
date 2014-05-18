@@ -12,7 +12,7 @@ class JsonCanonTest(TestCase):
 
     def test_all(self):
         truth = remove_endline(open("json/testall.json").read())
-        d = {
+        doc = {
             "a": [
                 10,
                 {},
@@ -32,5 +32,5 @@ class JsonCanonTest(TestCase):
             "c": True,
             "d": False
         }
-        s = jsoncanon.dumps(d)
+        s = jsoncanon.dumps(doc)
         self.assertEqual(s, truth)
