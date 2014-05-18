@@ -6,10 +6,10 @@ python:
 install: "pip install -r requirements-dev.txt --use-mirrors"
 # command to run tests
 script:
-  - nvm install 0.10
-  - nvm use 0.10
-  - npm install -g jsontools
-  - find json -name \*.json -exec json -n -f {} \;
+    # - nvm install 0.10
+    # - nvm use 0.10
+    # - npm install -g jsontools
+    # - find json -name \*.json -exec json -n -f {} \;
   - nosetests --with-coverage --cover-package=jsoncanon tests.py
 # no pesky email notifications
 notifications:
