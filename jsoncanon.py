@@ -1,7 +1,6 @@
 """ JSON canonicallizer module. It makes consistent representations of JSON
     objects for hashing and cryptography """
 from collections import OrderedDict
-from types import NoneType
 
 
 def dumps(element, sort_lists=False, excluded_keys=[], ignore_keyerror=False):
@@ -38,19 +37,19 @@ class _Canonicallizer(object):
         """ Canonicallize the element to a uniform string """
         s = ""
         # return strings based on what type the object is
-        if type(e) is list:
-            return self._wrap_list(self._process_list(s, e))
-        elif type(e) is dict:
+        if isinstance(e, dict):
             return self._wrap_dict(self._process_dict(s, e))
-        elif type(e) in [unicode, str]:
+        elif isinstance(e, list):
+            return self._wrap_list(self._process_list(s, e))
+        elif isinstance(e, unicode) or isinstance(e, str):
             return self._wrap_string(e)
-        elif type(e) is bool:
+        elif isinstance(e, bool):
             return "true" if e is True else "false"
-        elif type(e) is int:
+        elif isinstance(e, int):
             return str(e)
-        elif type(e) is float:
+        elif isinstance(e, float):
             return str(e)
-        elif type(e) is NoneType:
+        elif isinstance(e, type(None)):
             return "null"
         # If its not a json type raise an error
         raise ValueError("Type %s cannot be serialized" % str(type(e)))
@@ -114,29 +113,29 @@ class _Canonicallizer(object):
         """ Separates items in the list by type (list, dict, string, etc.) """
         # check all the items in the list and put them in buckets
         for item in l:
-            if type(item) is dict:
+            if isinstance(item, dict):
                 x = self.canon(item)
                 # the sort value for a dict is just its canonicallized string
                 type_lists_dict['dicts'].append((x, x))
-            elif type(item) is list:
+            elif isinstance(item, list):
                 x = self.canon(item)
                 # the sort value for a list is just its canonicallized string
                 type_lists_dict['lists'].append((x, x))
-            elif type(item) in [unicode, str]:
+            elif isinstance(item, unicode) or isinstance(item, str):
                 x = unicode(item)
                 # sort value for strings is the string itself
                 type_lists_dict['strings'].append((x, self._wrap_string(x)))
-            elif type(item) is int:
+            elif isinstance(item, int):
                 # sort value for ints is itself
                 type_lists_dict['ints'].append((item, str(item)))
-            elif type(item) is float:
+            elif isinstance(item, float):
                 # sort value for floats is itself
                 type_lists_dict['floats'].append((item, str(item)))
-            elif type(item) is bool:
+            elif isinstance(item, bool):
                 # sort value for bools is 0 for true and 1 for false
                 x = (0, "true") if item else (1, "false")
                 type_lists_dict['bools'].append(x)
-            elif type(item) is NoneType:
+            elif isinstance(item, type(None)):
                 # sort value for null is 0
                 type_lists_dict['nulls'].append((0, "null"))
 
