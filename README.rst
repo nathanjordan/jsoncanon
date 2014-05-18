@@ -5,4 +5,5 @@ jsoncanon
 .. image:: https://coveralls.io/repos/nathanjordan/jsoncanon/badge.png
     :target: https://coveralls.io/r/nathanjordan/jsoncanon
 
-A Python library that creates a canonicalized version of a JSON document
+A Python library that creates a canonicalized version of a JSON document for
+uniqueness checking, hashing, and cryptography

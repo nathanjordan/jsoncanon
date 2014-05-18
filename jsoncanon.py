@@ -1,5 +1,6 @@
 """ JSON canonicallizer module. It makes consistent representations of JSON
     objects for hashing and cryptography """
+from __future__ import unicode_literals
 from collections import OrderedDict
 
 
@@ -14,9 +15,8 @@ def dumps(element, sort_lists=False, excluded_keys=[], ignore_keyerror=False):
         raise ValueError("Cannot exclude keys for a non-dict type")
     # remove all the keys
     for key in excluded_keys:
-        if type(key) not in [unicode, str]:
-            raise ValueError("""Excluded keys must be strings or unicode
-                             objects""")
+        if not isinstance(key, str):
+            raise ValueError("Excluded keys must be strings")
         try:
             del element[key]
         except KeyError:
@@ -41,7 +41,7 @@ class _Canonicallizer(object):
             return self._wrap_dict(self._process_dict(s, e))
         elif isinstance(e, list):
             return self._wrap_list(self._process_list(s, e))
-        elif isinstance(e, unicode) or isinstance(e, str):
+        elif isinstance(e, str):
             return self._wrap_string(e)
         elif isinstance(e, bool):
             return "true" if e is True else "false"
@@ -101,7 +101,7 @@ class _Canonicallizer(object):
         # if we're not sorting this list
         else:
             # canon all the list items
-            all_items = map(self.canon, l)
+            all_items = list(map(self.canon, l))
         # add these items (sorted or unsorted) to the canon string
         for i, item in enumerate(all_items):
             s += item
@@ -121,10 +121,11 @@ class _Canonicallizer(object):
                 x = self.canon(item)
                 # the sort value for a list is just its canonicallized string
                 type_lists_dict['lists'].append((x, x))
-            elif isinstance(item, unicode) or isinstance(item, str):
-                x = unicode(item)
+            elif isinstance(item, str):
                 # sort value for strings is the string itself
-                type_lists_dict['strings'].append((x, self._wrap_string(x)))
+                type_lists_dict['strings'].append(
+                    (item, self._wrap_string(item))
+                )
             elif isinstance(item, int):
                 # sort value for ints is itself
                 type_lists_dict['ints'].append((item, str(item)))
