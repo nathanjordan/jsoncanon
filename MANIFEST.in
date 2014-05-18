@@ -1,0 +1,4 @@
+include setup.py
+exclude tests.py
+include README.rst
+include CHANGELOG.rst

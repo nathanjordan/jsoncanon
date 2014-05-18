@@ -1,0 +1,21 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+# command to install dependencies
+install: "pip install -r requirements-dev.txt --use-mirrors"
+# command to run tests
+script:
+  - nvm install 0.10
+  - nvm use 0.10
+  - npm install -g jsontools
+  - find json -name \*.json -exec json -n -f {} \;
+  - nosetests --with-coverage --cover-package=jsoncanon tests.py
+# no pesky email notifications
+notifications:
+  email: false
+# setup environment
+env:
+  - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}/jsoncanon"
+after_script:
+  coveralls

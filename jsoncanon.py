@@ -1,10 +1,19 @@
+""" JSON canonicallizer module. It makes consistent representations of JSON
+    objects for hashing and cryptography """
 from collections import OrderedDict
 from types import NoneType
 
 
 def dumps(element, sort_lists=False, excluded_keys=[], ignore_keyerror=False):
+    """ Dumps a canonicallized string of a JSON compatible object. Excluded
+        keys are removed from the top-level of a dictionary object (such as an
+        id or metadata). Specifying sort_lists as True will sort all lists in
+        the object. This is useful if the ordering of the list items is
+        insignificant """
+    # Excluded keys only work with dictionaries
     if type(element) is not dict and len(excluded_keys):
         raise ValueError("Cannot exclude keys for a non-dict type")
+    # remove all the keys
     for key in excluded_keys:
         if type(key) not in [unicode, str]:
             raise ValueError("""Excluded keys must be strings or unicode
@@ -14,102 +23,163 @@ def dumps(element, sort_lists=False, excluded_keys=[], ignore_keyerror=False):
         except KeyError:
             if not ignore_keyerror:
                 raise ValueError("Excluded key does not exist in element")
-    return _canon(element)
-
-def _canon(e):
-    """ Canonicallize the dictionary to a uniform string """
-    s = ""
-    if type(e) is list:
-        return _wrap_list(_process_list(s, e))
-    elif type(e) is dict:
-        return _wrap_dict(_process_dict(s, e))
-    elif type(e) in [unicode, str]:
-        return "\"" + e + "\""
-    elif type(e) is bool:
-        return "true" if e is True else "false"
-    elif type(e) is int:
-        return str(e)
-    elif type(e) is float:
-        return str(e)
-    elif type(e) is NoneType:
-        return "null"
-    raise ValueError("Type %s cannot be serialized" % str(type(e)))
+    # canonicallize it!
+    c = _Canonicallizer(sort_lists)
+    return c.canon(element)
 
 
-def _wrap_list(s):
-    return "[" + s + "]"
+class _Canonicallizer(object):
+    """ Funny name, serious results """
 
+    def __init__(self, sort_lists):
+        self.sort_lists = sort_lists
 
-def _wrap_dict(s):
-    return "{" + s + "}"
+    def canon(self, e):
+        """ Canonicallize the element to a uniform string """
+        s = ""
+        # return strings based on what type the object is
+        if type(e) is list:
+            return self._wrap_list(self._process_list(s, e))
+        elif type(e) is dict:
+            return self._wrap_dict(self._process_dict(s, e))
+        elif type(e) in [unicode, str]:
+            return self._wrap_string(e)
+        elif type(e) is bool:
+            return "true" if e is True else "false"
+        elif type(e) is int:
+            return str(e)
+        elif type(e) is float:
+            return str(e)
+        elif type(e) is NoneType:
+            return "null"
+        # If its not a json type raise an error
+        raise ValueError("Type %s cannot be serialized" % str(type(e)))
 
+    def _wrap_list(self, s):
+        """ Wraps the list in brackets """
+        return "[" + s + "]"
 
-def _wrap_string(s):
-    return "\"" + s + "\""
+    def _wrap_dict(self, s):
+        """ wraps the dict in braces """
+        return "{" + s + "}"
 
+    def _wrap_string(self, s):
+        """ wraps the string in quotes """
+        return "\"" + s + "\""
 
-def _process_dict(s, d):
-    od = OrderedDict(sorted(d.items()))
-    for i, k in enumerate(od):
-        s += "\"" + k + "\":" + canon(od[k])
-        if i < len(d.keys()) - 1:
-            s += ","
-    return s
+    def _process_dict(self, s, d):
+        """ Canonicallizes a dictionary by sorting the keys """
+        # sort the dictionary keys
+        od = OrderedDict(sorted(d.items()))
+        # turn the dict into a string
+        for i, k in enumerate(od):
+            s += "\"" + k + "\":" + self.canon(od[k])
+            if i < len(d.keys()) - 1:
+                s += ","
+        return s
 
+    def _process_list(self, s, l):
+        """ Canonicallizes a list """
+        # if we're going to be sorting this list
+        if self.sort_lists:
+            # this is the ordering for the lists
+            type_lists_dict = OrderedDict([
+                ("dicts", []),
+                ("lists", []),
+                ("strings", []),
+                ("ints", []),
+                ("floats", []),
+                ("bools", []),
+                ("nulls", []),
+            ])
+            # separate the types into buckets
+            self._categorize_list_items(type_lists_dict, l)
+            # sort the buckets
+            self._sort_type_lists(type_lists_dict)
+            # create a list of the output strings (2nd element of the tuple)
+            all_items = [i[1] for i in
+                         self._concat_list_items(type_lists_dict)]
+        # if we're not sorting this list
+        else:
+            # canon all the list items
+            all_items = map(self.canon, l)
+        # add these items (sorted or unsorted) to the canon string
+        for i, item in enumerate(all_items):
+            s += item
+            if i < len(all_items) - 1:
+                s += ","
+        return s
 
-def _process_list(s, l):
-    type_lists_dict = OrderedDict([
-        ("dicts", []),
-        ("lists", []),
-        ("strings", []),
-        ("ints", []),
-        ("floats", []),
-        ("bools", []),
-        ("nulls", []),
-    ])
-    _process_list_types(type_lists_dict, l)
-    _sort_type_lists(type_lists_dict)
-    all_items = _concat_type_lists(type_lists_dict)
-    for i, item in enumerate(all_items):
-        s += item[1]
-        if i < len(all_items) - 1:
-            s += ","
-    return s
+    def _categorize_list_items(self, type_lists_dict, l):
+        """ Separates items in the list by type (list, dict, string, etc.) """
+        # check all the items in the list and put them in buckets
+        for item in l:
+            if type(item) is dict:
+                x = self.canon(item)
+                # the sort value for a dict is just its canonicallized string
+                type_lists_dict['dicts'].append((x, x))
+            elif type(item) is list:
+                x = self.canon(item)
+                # the sort value for a list is just its canonicallized string
+                type_lists_dict['lists'].append((x, x))
+            elif type(item) in [unicode, str]:
+                x = unicode(item)
+                # sort value for strings is the string itself
+                type_lists_dict['strings'].append((x, self._wrap_string(x)))
+            elif type(item) is int:
+                # sort value for ints is itself
+                type_lists_dict['ints'].append((item, str(item)))
+            elif type(item) is float:
+                # sort value for floats is itself
+                type_lists_dict['floats'].append((item, str(item)))
+            elif type(item) is bool:
+                # sort value for bools is 0 for true and 1 for false
+                x = (0, "true") if item else (1, "false")
+                type_lists_dict['bools'].append(x)
+            elif type(item) is NoneType:
+                # sort value for null is 0
+                type_lists_dict['nulls'].append((0, "null"))
 
+    def _concat_list_items(self, type_lists_dict):
+        """ Takes the separated types and puts them back together """
+        concatenated_list = []
+        # loop over the type lists in the type_lists dict
+        for k, v in type_lists_dict.iteritems():
+            # add them to the big list
+            concatenated_list += v
+        return concatenated_list
 
-def _process_list_types(type_lists_dict, l):
-    for item in l:
-        if type(item) is dict:
-            x = canon(item)
-            type_lists_dict['dicts'].append((x, x))
-        elif type(item) is list:
-            x = canon(item)
-            type_lists_dict['lists'].append((x, x))
-        elif type(item) in [unicode, str]:
-            x = unicode(item)
-            type_lists_dict['strings'].append((x, _wrap_string(x)))
-        elif type(item) is int:
-            type_lists_dict['ints'].append((item, str(item)))
-        elif type(item) is float:
-            type_lists_dict['floats'].append((item, str(item)))
-        elif type(item) is bool:
-            x = (0, "true") if item else (1, "false")
-            type_lists_dict['bools'].append(x)
-        elif type(item) is NoneType:
-            type_lists_dict['nulls'].append((0, "null"))
+    def _sort_type_lists(self, type_lists_dict):
+        """ Sort the type lists """
+        # These are in a specific order by using OrderedDict
+        for k, v in type_lists_dict.iteritems():
+            # sort each type list
+            type_lists_dict[k] = self._sort_type_list(v)
 
+    def _sort_type_list(self, l):
+        """ Sort a list of one type of list item """
+        # Sort by the first element of the tuple
+        return sorted(l, key=lambda x: x[0])
 
-def _concat_type_lists(type_lists_dict):
-    concatenated_list = []
-    for k, v in type_lists_dict.iteritems():
-        concatenated_list += v
-    return concatenated_list
+d = {
+    "a": [
+        10,
+        {},
+        {
+            "hello": 1,
+            "zzz": []
+        },
+        "bob",
+        "agnes"
+    ],
+    "1": 55.7,
+    "3": {
+        "xxxxx": {},
+        "ggg": []
+    },
+    "b": None,
+    "c": True,
+    "d": False
+}
 
-
-def _sort_type_lists(type_lists_dict):
-    for k, v in type_lists_dict.iteritems():
-        type_lists_dict[k] = _sort_type_list(v)
-
-
-def _sort_type_list(l):
-    return sorted(l, key=lambda x: x[0])
+print dumps(d)
