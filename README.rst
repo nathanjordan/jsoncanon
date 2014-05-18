@@ -9,11 +9,63 @@ jsoncanon
 A Python library that creates a canonicalized version of a JSON document for
 uniqueness checking, hashing, and cryptography
 
-Benchmark Report
+**Note:** Do **NOT** use this in a production environment yet, still working on
+performance and a formal standard for sorting lists
+
+Usage
 ------------------------------
 
-CanonBench
-----------
+**Basic usage**
+
+::
+
+    import jsoncanon
+
+    doc1 = {
+        "def": [5, 2, 1, 7],
+        "abc": 123
+    }
+
+    doc2 = {
+        "abc": 123,
+        "def": [5, 2, 1, 7]
+    }
+
+    jsoncanon.dumps(doc1)
+    jsoncanon.dumps(doc2)
+    jsoncanon.dumps(doc, sort_lists=True)
+
+yields ::
+
+    {"abc":123,"def":[5,2,1,7]}
+    {"abc":123,"def":[5,2,1,7]}
+
+and ::
+
+    {"abc":123,"def":[1,2,5,7]}
+
+respectively.
+
+**Excluded Keys**
+
+::
+
+    import jsoncanon
+
+    doc1 = {
+        "_id": "a4337bc45a8fc544c03f52dc550",
+        "name": "Robert Paulson",
+        "age": 55
+    }
+
+    jsoncanon.dumps(doc1, excluded_keys=['_id'])
+
+yeilds ::
+
+    {"age":55,"name":"Robert Paulson"}
+
+Benchmark Report
+------------------------------
 
 +-------------------------+------+------+--------+---------+---------------+
 |                    name | rank | runs |   mean |      sd | timesBaseline |
